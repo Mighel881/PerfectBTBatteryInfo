@@ -14,15 +14,17 @@ __strong static id bluetoothBatteryInfoObject;
 static double windowWidth;
 static double windowHeight;
 static double labelsHeight;
-static int margin;
 
 static HBPreferences *pref;
 static BOOL enabled;
 static BOOL showOnLockScreen;
+static BOOL showOnControlCenter;
+static BOOL hideOnFullScreen;
 static BOOL hideOnLandscape;
 static BOOL hideInternalBattery;
 static BOOL hideGlyph;
 static BOOL dynamicHeadphonesIcon;
+static BOOL hideBluetoothDevicesBatteryFromStatusBar;
 static BOOL hideDeviceNameLabel;
 static BOOL showPercentSymbol;
 static long glyphSize;
@@ -33,7 +35,8 @@ static BOOL percentageFontBold;
 static long nameFontSize;
 static BOOL nameFontBold;
 static BOOL backgroundColorEnabled;
-static float backgroundCornerRadius;
+static NSInteger margin;
+static CGFloat backgroundCornerRadius;
 static BOOL customBackgroundColorEnabled;
 static UIColor *customBackgroundColor;
 static BOOL enableCustomDeviceNameColor;
@@ -43,6 +46,7 @@ static double portraitY;
 static double landscapeX;
 static double landscapeY;
 static BOOL followDeviceOrientation;
+static BOOL animateMovement;
 static BOOL enableBlackListedApps;
 static NSArray *blackListedApps;
 static BOOL defaultColorEnabled;
@@ -58,13 +62,15 @@ static UIColor *lowBattery2Color;
 
 static BOOL isBlacklistedAppInFront = NO;
 static BOOL shouldHideBasedOnOrientation = NO;
-static BOOL isLockScreenPresented = NO;
+static BOOL isLockScreenPresented;
+static BOOL isControlCenterVisible;
 static BOOL noDevicesAvailable = NO;
 static UIDeviceOrientation deviceOrientation;
 static BOOL isOnLandscape;
 static unsigned int deviceIndex;
 static NSString *percentSymbol;
 static BOOL useSystemColorForPercentage = YES;
+static BOOL isStatusBarHidden;
 
 static void orientationChanged()
 {
@@ -98,6 +104,7 @@ static void loadDeviceScreenDimensions()
 			deviceNameLabel = [[UILabel alloc] initWithFrame: CGRectMake(0, 0, 0, 0)];
 			
 			bluetoothBatteryInfoWindow = [[UIWindow alloc] initWithFrame: CGRectMake(0, 0, 0, 0)];
+			[bluetoothBatteryInfoWindow setWindowLevel: 100000];
 			[bluetoothBatteryInfoWindow _setSecure: YES];
 			[[bluetoothBatteryInfoWindow layer] setAnchorPoint: CGPointZero];
 			[bluetoothBatteryInfoWindow addSubview: glyphImageView];
@@ -128,11 +135,6 @@ static void loadDeviceScreenDimensions()
 	{
 		orientationOld = nil;
 		
-		if(showOnLockScreen)
-			[bluetoothBatteryInfoWindow setWindowLevel: 1075];
-		else
-			[bluetoothBatteryInfoWindow setWindowLevel: 1000];
-
 		if(!backgroundColorEnabled)
 			[bluetoothBatteryInfoWindow setBackgroundColor: [UIColor clearColor]];
 		else
@@ -183,7 +185,7 @@ static void loadDeviceScreenDimensions()
 			[deviceNameLabel sizeToFit];
 		}
 
-		labelsHeight = [percentageLabel frame].size.height + (hideDeviceNameLabel ? 0 : [deviceNameLabel frame].size.height);
+		labelsHeight = (percentageFontSize + (hideDeviceNameLabel ? 0 : nameFontSize)) * 1.217;
 	}
 
 	- (void)updateGlyphFrame
@@ -218,87 +220,67 @@ static void loadDeviceScreenDimensions()
 
 			frame = [deviceNameLabel frame];
 			frame.origin.x = margin + (hideGlyph ? 0 : glyphSize + 3);
-			frame.origin.y = windowHeight / 2 - labelsHeight / 2 + [percentageLabel frame].size.height;
+			frame.origin.y = windowHeight / 2 - labelsHeight / 2 + percentageFontSize * 1.217;
 			[deviceNameLabel setFrame: frame];
 		}
 	}
 
-	- (void)updateWindowFrameWithAnimation: (BOOL)animation
+	- (void)updateWindowFrameWithAnimation: (BOOL)animate
 	{
 		shouldHideBasedOnOrientation = hideOnLandscape && isOnLandscape;
 		[self hideIfNeeded];
 
-		if(!followDeviceOrientation)
+		CGAffineTransform newTransform;
+		CGRect frame = [bluetoothBatteryInfoWindow frame];
+
+		if(!followDeviceOrientation || deviceOrientation == UIDeviceOrientationPortrait)
 		{
-			CGRect frame = [bluetoothBatteryInfoWindow frame];
 			frame.origin.x = portraitX;
 			frame.origin.y = portraitY;
-			frame.size.width = windowWidth;
-			frame.size.height = windowHeight;
-			[bluetoothBatteryInfoWindow setFrame: frame];
+			if(deviceOrientation != orientationOld)
+				newTransform = CGAffineTransformMakeRotation(DegreesToRadians(0));
 		}
-		else
+		else if(deviceOrientation == UIDeviceOrientationLandscapeLeft)
 		{
-			CGAffineTransform newTransform;
-			CGRect frame = [bluetoothBatteryInfoWindow frame];
+			frame.origin.x = screenWidth - landscapeY;
+			frame.origin.y = landscapeX;
+			if(deviceOrientation != orientationOld)
+				newTransform = CGAffineTransformMakeRotation(DegreesToRadians(90));
+		}
+		else if(deviceOrientation == UIDeviceOrientationPortraitUpsideDown)
+		{
+			frame.origin.x = screenWidth - portraitX;
+			frame.origin.y = screenHeight - portraitY;
+			if(deviceOrientation != orientationOld)
+				newTransform = CGAffineTransformMakeRotation(DegreesToRadians(180));
+		}
+		else if(deviceOrientation == UIDeviceOrientationLandscapeRight)
+		{
+			frame.origin.x = landscapeY;
+			frame.origin.y = screenHeight - landscapeX;
+			if(deviceOrientation != orientationOld)
+				newTransform = CGAffineTransformMakeRotation(-DegreesToRadians(90));
+		}
 
-			if(deviceOrientation == UIDeviceOrientationLandscapeRight)
-			{
-				frame.origin.x = landscapeY;
-				frame.origin.y = screenHeight - landscapeX;
-				if(deviceOrientation != orientationOld)
-					newTransform = CGAffineTransformMakeRotation(-DegreesToRadians(90));
-			}
-			else if(deviceOrientation == UIDeviceOrientationLandscapeLeft)
-			{
-				frame.origin.x = screenWidth - landscapeY;
-				frame.origin.y = landscapeX;
-				if(deviceOrientation != orientationOld)
-					newTransform = CGAffineTransformMakeRotation(DegreesToRadians(90));
-			}
-			else if(deviceOrientation == UIDeviceOrientationPortraitUpsideDown)
-			{
-				frame.origin.x = screenWidth - portraitX;
-				frame.origin.y = screenHeight - portraitY;
-				if(deviceOrientation != orientationOld)
-					newTransform = CGAffineTransformMakeRotation(DegreesToRadians(180));
-			}
-			else if(deviceOrientation == UIDeviceOrientationPortrait)
-			{
-				frame.origin.x = portraitX;
-				frame.origin.y = portraitY;
-				if(deviceOrientation != orientationOld)
-					newTransform = CGAffineTransformMakeRotation(DegreesToRadians(0));
-			}
+		frame.size.width = isOnLandscape && followDeviceOrientation ? windowHeight : windowWidth;
+		frame.size.height = isOnLandscape && followDeviceOrientation ? windowWidth : windowHeight;
 
-			if(isOnLandscape)
-			{
-				frame.size.width = windowHeight;
-				frame.size.height = windowWidth;
-			}
-			else
-			{
-				frame.size.width = windowWidth;
-				frame.size.height = windowHeight;
-			}
-
-			if(animation)
-			{
-				[UIView animateWithDuration: 0.3f animations:
-				^{
-					if(deviceOrientation != orientationOld)
-						[bluetoothBatteryInfoWindow setTransform: newTransform];
-					[bluetoothBatteryInfoWindow setFrame: frame];
-					orientationOld = deviceOrientation;
-				} completion: nil];
-			}
-			else
-			{
+		if(animate && animateMovement)
+		{
+			[UIView animateWithDuration: 0.3f animations:
+			^{
 				if(deviceOrientation != orientationOld)
 					[bluetoothBatteryInfoWindow setTransform: newTransform];
 				[bluetoothBatteryInfoWindow setFrame: frame];
 				orientationOld = deviceOrientation;
-			}
+			} completion: nil];
+		}
+		else
+		{
+			if(deviceOrientation != orientationOld)
+				[bluetoothBatteryInfoWindow setTransform: newTransform];
+			[bluetoothBatteryInfoWindow setFrame: frame];
+			orientationOld = deviceOrientation;
 		}
 	}
 
@@ -535,7 +517,12 @@ static void loadDeviceScreenDimensions()
 
 	- (void)hideIfNeeded
 	{
-		[bluetoothBatteryInfoWindow setHidden: noDevicesAvailable || !isLockScreenPresented && (shouldHideBasedOnOrientation || isBlacklistedAppInFront)];
+		[bluetoothBatteryInfoWindow setHidden: 
+			noDevicesAvailable 
+		 || isLockScreenPresented && !showOnLockScreen
+		 || isStatusBarHidden && hideOnFullScreen
+		 || isControlCenterVisible && !showOnControlCenter
+		 || !isLockScreenPresented && (shouldHideBasedOnOrientation || isBlacklistedAppInFront)];
 	}
 
 	- (NSString*)getDeviceName: (NSString*)assetName
@@ -598,6 +585,17 @@ static void loadDeviceScreenDimensions()
 
 %end
 
+%hook SBControlCenterController
+
+-(BOOL)isVisible
+{
+	isControlCenterVisible = %orig;
+	[bluetoothBatteryInfoObject hideIfNeeded];
+	return isControlCenterVisible;
+}
+
+%end
+
 %hook BCBatteryDevice
 
 - (void)setCharging: (BOOL)arg1
@@ -620,14 +618,46 @@ static void loadDeviceScreenDimensions()
 
 %end
 
+%group hideBluetoothDevicesBatteryFromStatusBarGroup
+
+	%hook BluetoothDevice
+
+	- (BOOL)supportsBatteryLevel
+	{
+		return NO;
+	}
+
+	%end
+	
+%end
+
 %hook _UIStatusBar
 
-- (void)setForegroundColor: (UIColor*)color
+- (void)setStyle: (long long)style
 {
 	%orig;
-	
-	if(bluetoothBatteryInfoObject && [self styleAttributes] && [[self styleAttributes] imageTintColor]) 
-		[bluetoothBatteryInfoObject updateTextColor: [[self styleAttributes] imageTintColor]];
+
+	if(bluetoothBatteryInfoObject) 
+		[bluetoothBatteryInfoObject updateTextColor: (style == 1) ? [UIColor whiteColor] : [UIColor blackColor]];
+}
+
+- (void)setStyle: (long long)style forPartWithIdentifier: (id)arg2
+{
+	%orig;
+
+	if(bluetoothBatteryInfoObject) 
+		[bluetoothBatteryInfoObject updateTextColor: (style == 1) ? [UIColor whiteColor] : [UIColor blackColor]];
+}
+
+%end
+
+%hook SBMainDisplaySceneLayoutStatusBarView
+
+- (void)_applyStatusBarHidden: (BOOL)arg1 withAnimation: (long long)arg2 toSceneWithIdentifier: (id)arg3
+{
+	isStatusBarHidden = arg1;
+	[bluetoothBatteryInfoObject hideIfNeeded];
+	%orig;
 }
 
 %end
@@ -751,37 +781,6 @@ static void loadDeviceScreenDimensions()
 
 static void settingsChanged(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo)
 {
-	if(!pref) pref = [[HBPreferences alloc] initWithIdentifier: @"com.johnzaro.bluetoothbatteryinfoprefs"];
-	enabled = [pref boolForKey: @"enabled"];
-	showOnLockScreen = [pref boolForKey: @"showOnLockScreen"];
-	hideOnLandscape = [pref boolForKey: @"hideOnLandscape"];
-	hideInternalBattery = [pref boolForKey: @"hideInternalBattery"];
-	hideGlyph = [pref boolForKey: @"hideGlyph"];
-	hideDeviceNameLabel = [pref boolForKey: @"hideDeviceNameLabel"];
-	glyphSize = [pref integerForKey: @"glyphSize"];
-	enableGlyphCustomTintColor = [pref boolForKey: @"enableGlyphCustomTintColor"];
-	percentageFontSize = [pref integerForKey: @"percentageFontSize"];
-	percentageFontBold = [pref boolForKey: @"percentageFontBold"];
-	nameFontSize = [pref integerForKey: @"nameFontSize"];
-	nameFontBold = [pref boolForKey: @"nameFontBold"];
-	backgroundColorEnabled = [pref boolForKey: @"backgroundColorEnabled"];
-	margin = [pref integerForKey: @"margin"];
-	backgroundCornerRadius = [pref floatForKey: @"backgroundCornerRadius"];
-	customBackgroundColorEnabled = [pref boolForKey: @"customBackgroundColorEnabled"];
-	enableCustomDeviceNameColor = [pref boolForKey: @"enableCustomDeviceNameColor"];
-	portraitX = [pref floatForKey: @"portraitX"];
-	portraitY = [pref floatForKey: @"portraitY"];
-	landscapeX = [pref floatForKey: @"landscapeX"];
-	landscapeY = [pref floatForKey: @"landscapeY"];
-	followDeviceOrientation = [pref boolForKey: @"followDeviceOrientation"];
-	enableBlackListedApps = [pref boolForKey: @"enableBlackListedApps"];
-	showPercentSymbol = [pref boolForKey: @"showPercentSymbol"];
-	defaultColorEnabled = [pref boolForKey: @"defaultColorEnabled"];
-	chargingColorEnabled = [pref boolForKey: @"chargingColorEnabled"];
-	lowPowerModeColorEnabled = [pref boolForKey: @"lowPowerModeColorEnabled"];
-	lowBattery1ColorEnabled = [pref boolForKey: @"lowBattery1ColorEnabled"];
-	lowBattery2ColorEnabled = [pref boolForKey: @"lowBattery2ColorEnabled"];
-
 	NSDictionary *preferencesDictionary = [NSDictionary dictionaryWithContentsOfFile: @"/var/mobile/Library/Preferences/com.johnzaro.bluetoothbatteryinfoprefs.colors.plist"];
 	customBackgroundColor = [SparkColourPickerUtils colourWithString: [preferencesDictionary objectForKey: @"customBackgroundColor"] withFallback: @"#000000:0.50"];
 	glyphCustomTintColor = [SparkColourPickerUtils colourWithString: [preferencesDictionary objectForKey: @"glyphCustomTintColor"] withFallback: @"#FF9400:1.0"];
@@ -813,48 +812,49 @@ static void settingsChanged(CFNotificationCenterRef center, void *observer, CFSt
 	@autoreleasepool
 	{
 		pref = [[HBPreferences alloc] initWithIdentifier: @"com.johnzaro.bluetoothbatteryinfoprefs"];
-		[pref registerDefaults:
-		@{
-			@"enabled": @NO,
-			@"showOnLockScreen": @NO,
-			@"hideOnLandscape": @NO,
-			@"hideInternalBattery": @NO,
-			@"hideGlyph": @NO,
-			@"dynamicHeadphonesIcon": @NO,
-			@"hideDeviceNameLabel": @NO,
-			@"showPercentSymbol": @NO,
-			@"glyphSize": @20,
-			@"enableGlyphCustomTintColor": @NO,
-			@"percentageFontSize": @10,
-			@"percentageFontBold": @NO,
-			@"nameFontSize": @8,
-			@"nameFontBold": @NO,
-			@"backgroundColorEnabled": @NO,
-			@"margin": @3,
-			@"backgroundCornerRadius": @6,
-			@"customBackgroundColorEnabled": @NO,
-			@"enableCustomDeviceNameColor": @NO,
-			@"portraitX": @165,
-			@"portraitY": @32,
-			@"landscapeX": @735,
-			@"landscapeY": @32,
-			@"followDeviceOrientation": @NO,
-			@"enableBlackListedApps": @NO,
-			@"defaultColorEnabled": @NO,
-			@"chargingColorEnabled": @NO,
-			@"lowPowerModeColorEnabled": @NO,
-			@"lowBattery1ColorEnabled": @NO,
-			@"lowBattery2ColorEnabled": @NO,
-    	}];
-
-		settingsChanged(NULL, NULL, NULL, NULL, NULL);
-
+		[pref registerBool: &enabled default: NO forKey: @"enabled"];
 		if(enabled)
 		{
-			CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, settingsChanged, CFSTR("com.johnzaro.bluetoothbatteryinfoprefs/reloadprefs"), NULL, CFNotificationSuspensionBehaviorCoalesce);
+			[pref registerBool: &showOnLockScreen default: NO forKey: @"showOnLockScreen"];
+			[pref registerBool: &showOnControlCenter default: NO forKey: @"showOnControlCenter"];
+			[pref registerBool: &hideOnFullScreen default: NO forKey: @"hideOnFullScreen"];
+			[pref registerBool: &hideOnLandscape default: NO forKey: @"hideOnLandscape"];
+			[pref registerBool: &hideInternalBattery default: NO forKey: @"hideInternalBattery"];
+			[pref registerBool: &hideGlyph default: NO forKey: @"hideGlyph"];
+			[pref registerBool: &dynamicHeadphonesIcon default: NO forKey: @"dynamicHeadphonesIcon"];
+			[pref registerBool: &hideBluetoothDevicesBatteryFromStatusBar default: NO forKey: @"hideBluetoothDevicesBatteryFromStatusBar"];
+			[pref registerBool: &hideDeviceNameLabel default: NO forKey: @"hideDeviceNameLabel"];
+			[pref registerBool: &showPercentSymbol default: NO forKey: @"showPercentSymbol"];
+			[pref registerInteger: &glyphSize default: 20 forKey: @"glyphSize"];
+			[pref registerBool: &enableGlyphCustomTintColor default: NO forKey: @"enableGlyphCustomTintColor"];
+			[pref registerInteger: &percentageFontSize default: 10 forKey: @"percentageFontSize"];
+			[pref registerBool: &percentageFontBold default: NO forKey: @"percentageFontBold"];
+			[pref registerInteger: &nameFontSize default: 8 forKey: @"nameFontSize"];
+			[pref registerBool: &nameFontBold default: NO forKey: @"nameFontBold"];
+			[pref registerBool: &backgroundColorEnabled default: NO forKey: @"backgroundColorEnabled"];
+			[pref registerInteger: &margin default: 3 forKey: @"margin"];
+			[pref registerFloat: &backgroundCornerRadius default: 6 forKey: @"backgroundCornerRadius"];
+			[pref registerBool: &customBackgroundColorEnabled default: NO forKey: @"customBackgroundColorEnabled"];
+			[pref registerBool: &enableCustomDeviceNameColor default: NO forKey: @"enableCustomDeviceNameColor"];
+			[pref registerFloat: &portraitX default: 165 forKey: @"portraitX"];
+			[pref registerFloat: &portraitY default: 32 forKey: @"portraitY"];
+			[pref registerFloat: &landscapeX default: 735 forKey: @"landscapeX"];
+			[pref registerFloat: &landscapeY default: 32 forKey: @"landscapeY"];
+			[pref registerBool: &followDeviceOrientation default: NO forKey: @"followDeviceOrientation"];
+			[pref registerBool: &animateMovement default: NO forKey: @"animateMovement"];
+			[pref registerBool: &enableBlackListedApps default: NO forKey: @"enableBlackListedApps"];
+			[pref registerBool: &defaultColorEnabled default: NO forKey: @"defaultColorEnabled"];
+			[pref registerBool: &chargingColorEnabled default: NO forKey: @"chargingColorEnabled"];
+			[pref registerBool: &lowPowerModeColorEnabled default: NO forKey: @"lowPowerModeColorEnabled"];
+			[pref registerBool: &lowBattery1ColorEnabled default: NO forKey: @"lowBattery1ColorEnabled"];
+			[pref registerBool: &lowBattery2ColorEnabled default: NO forKey: @"lowBattery2ColorEnabled"];
 
-			dynamicHeadphonesIcon = [pref boolForKey: @"dynamicHeadphonesIcon"];
-			if(dynamicHeadphonesIcon) %init(dynamicHeadphonesIconGroup);
+			settingsChanged(NULL, NULL, NULL, NULL, NULL);
+			CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, settingsChanged, CFSTR("com.johnzaro.bluetoothbatteryinfoprefs/ReloadPrefs"), NULL, CFNotificationSuspensionBehaviorCoalesce);
+			if(hideBluetoothDevicesBatteryFromStatusBar)
+				%init(hideBluetoothDevicesBatteryFromStatusBarGroup);
+			if(dynamicHeadphonesIcon)
+				%init(dynamicHeadphonesIconGroup);
 			%init;
 		}
 	}

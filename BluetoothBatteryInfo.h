@@ -61,14 +61,6 @@
 - (BOOL)launchApplicationWithIdentifier:(id)arg1 suspended:(BOOL)arg2;
 @end
 
-@interface _UIStatusBarStyleAttributes: NSObject
-@property(nonatomic, copy) UIColor *imageTintColor;
-@end
-
-@interface _UIStatusBar: UIView
-@property(nonatomic, retain) _UIStatusBarStyleAttributes *styleAttributes;
-@end
-
 @interface UIImage ()
 @property(nonatomic, assign) CGSize pixelSize;
 - (UIImage *)sbf_resizeImageToSize:(CGSize)size;
@@ -88,6 +80,5 @@
 @property(nonatomic, assign) UIStatusBarItem *item;
 @end
 
-@interface UIStatusBarIndicatorItemView : UIStatusBarItemView
+@interface UIStatusBarIndicatorItemView: UIStatusBarItemView
 @end
-
