@@ -5,10 +5,6 @@
 
 #define DegreesToRadians(degrees) (degrees * M_PI / 180)
 
-static double screenWidth;
-static double screenHeight;
-static UIDeviceOrientation orientationOld;
-
 __strong static id bluetoothBatteryInfoObject;
 
 static double windowWidth;
@@ -61,12 +57,15 @@ static UIColor *lowPowerModeColor;
 static UIColor *lowBattery1Color;
 static UIColor *lowBattery2Color;
 
+static double screenWidth;
+static double screenHeight;
+static UIDeviceOrientation orientationOld;
+static UIDeviceOrientation deviceOrientation;
 static BOOL isBlacklistedAppInFront = NO;
 static BOOL shouldHideBasedOnOrientation = NO;
 static BOOL isLockScreenPresented = YES;
 static BOOL isControlCenterVisible = NO;
 static BOOL noDevicesAvailable = NO;
-static UIDeviceOrientation deviceOrientation;
 static BOOL isOnLandscape;
 static unsigned int deviceIndex;
 static NSString *percentSymbol;
@@ -532,8 +531,8 @@ static void loadDeviceScreenDimensions()
 		 || isControlCenterVisible && !showOnControlCenter
 		 || isFolderOpen
 		 || isAppSwitcherOpen
-		 || !isLockScreenPresented && (shouldHideBasedOnOrientation || isBlacklistedAppInFront
-		 || isPeepStatusBarHidden)];
+		 || !isLockScreenPresented && (shouldHideBasedOnOrientation || isBlacklistedAppInFront)
+		 || isPeepStatusBarHidden];
 	}
 
 	- (NSString*)getDeviceName: (NSString*)assetName
