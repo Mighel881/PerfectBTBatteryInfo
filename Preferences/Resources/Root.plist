@@ -44,7 +44,9 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
-			<string>WHEN TO SHOW</string>
+			<string>VISIBILITY</string>
+			<key>footerText</key>
+			<string>'NOTCHLESS SUPPORT' OPTION HAS THE SIDE EFFECT OF SHOWING THE BLUETOOTH INFO ABOVE EVERY OTHER UI ELEMENT.</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -99,6 +101,20 @@
 			<string>hideOnLandscape</string>
 			<key>label</key>
 			<string>Hide On Landscape</string>
+			<key>PostNotification</key>
+			<string>com.johnzaro.bluetoothbatteryinfoprefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<false/>
+			<key>defaults</key>
+			<string>com.johnzaro.bluetoothbatteryinfoprefs</string>
+			<key>key</key>
+			<string>notchlessSupport</string>
+			<key>label</key>
+			<string>Notchless Support</string>
 			<key>PostNotification</key>
 			<string>com.johnzaro.bluetoothbatteryinfoprefs/ReloadPrefs</string>
 		</dict>

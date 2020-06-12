@@ -82,3 +82,7 @@
 
 @interface UIStatusBarIndicatorItemView: UIStatusBarItemView
 @end
+
+@interface SBMainSwitcherViewController: UIViewController
+- (BOOL)isMainSwitcherVisible;
+@end

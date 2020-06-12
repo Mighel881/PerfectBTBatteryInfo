@@ -21,6 +21,7 @@ static BOOL showOnLockScreen;
 static BOOL showOnControlCenter;
 static BOOL hideOnFullScreen;
 static BOOL hideOnLandscape;
+static BOOL notchlessSupport;
 static BOOL hideInternalBattery;
 static BOOL hideGlyph;
 static BOOL dynamicHeadphonesIcon;
@@ -62,15 +63,18 @@ static UIColor *lowBattery2Color;
 
 static BOOL isBlacklistedAppInFront = NO;
 static BOOL shouldHideBasedOnOrientation = NO;
-static BOOL isLockScreenPresented;
-static BOOL isControlCenterVisible;
+static BOOL isLockScreenPresented = YES;
+static BOOL isControlCenterVisible = NO;
 static BOOL noDevicesAvailable = NO;
 static UIDeviceOrientation deviceOrientation;
 static BOOL isOnLandscape;
 static unsigned int deviceIndex;
 static NSString *percentSymbol;
 static BOOL useSystemColorForPercentage = YES;
-static BOOL isStatusBarHidden;
+static BOOL isPeepStatusBarHidden = NO;
+static BOOL isStatusBarHidden = NO;
+static BOOL isAppSwitcherOpen = NO;
+static BOOL isFolderOpen = NO;
 
 static void orientationChanged()
 {
@@ -104,7 +108,6 @@ static void loadDeviceScreenDimensions()
 			deviceNameLabel = [[UILabel alloc] initWithFrame: CGRectMake(0, 0, 0, 0)];
 			
 			bluetoothBatteryInfoWindow = [[UIWindow alloc] initWithFrame: CGRectMake(0, 0, 0, 0)];
-			[bluetoothBatteryInfoWindow setWindowLevel: 100000];
 			[bluetoothBatteryInfoWindow _setSecure: YES];
 			[[bluetoothBatteryInfoWindow layer] setAnchorPoint: CGPointZero];
 			[bluetoothBatteryInfoWindow addSubview: glyphImageView];
@@ -134,6 +137,11 @@ static void loadDeviceScreenDimensions()
 	- (void)_updateObjectWithNewSettings
 	{
 		orientationOld = nil;
+
+		if(notchlessSupport)
+			[bluetoothBatteryInfoWindow setWindowLevel: 100000];
+		else
+			[bluetoothBatteryInfoWindow setWindowLevel: 1075];
 		
 		if(!backgroundColorEnabled)
 			[bluetoothBatteryInfoWindow setBackgroundColor: [UIColor clearColor]];
@@ -522,7 +530,10 @@ static void loadDeviceScreenDimensions()
 		 || isLockScreenPresented && !showOnLockScreen
 		 || isStatusBarHidden && hideOnFullScreen
 		 || isControlCenterVisible && !showOnControlCenter
-		 || !isLockScreenPresented && (shouldHideBasedOnOrientation || isBlacklistedAppInFront)];
+		 || isFolderOpen
+		 || isAppSwitcherOpen
+		 || !isLockScreenPresented && (shouldHideBasedOnOrientation || isBlacklistedAppInFront
+		 || isPeepStatusBarHidden)];
 	}
 
 	- (NSString*)getDeviceName: (NSString*)assetName
@@ -549,54 +560,7 @@ static void loadDeviceScreenDimensions()
 
 @end
 
-%hook SpringBoard
-
-- (void)applicationDidFinishLaunching: (id)application
-{
-	%orig;
-
-	loadDeviceScreenDimensions();
-	if(!bluetoothBatteryInfoObject) 
-	{
-		bluetoothBatteryInfoObject = [[BluetoothBatteryInfo alloc] init];
-		[bluetoothBatteryInfoObject updateDeviceWithoutEffects];
-	}
-}
-
-- (void)frontDisplayDidChange: (id)arg1 
-{
-	%orig;
-
-	NSString *currentApp = [(SBApplication*)[self _accessibilityFrontMostApplication] bundleIdentifier];
-	isBlacklistedAppInFront = blackListedApps && currentApp && [blackListedApps containsObject: currentApp];
-	[bluetoothBatteryInfoObject hideIfNeeded];
-}
-
-%end
-
-%hook SBCoverSheetPresentationManager
-
-- (BOOL)isPresented
-{
-	isLockScreenPresented = %orig;
-	[bluetoothBatteryInfoObject hideIfNeeded];
-	return isLockScreenPresented;
-}
-
-%end
-
-%hook SBControlCenterController
-
--(BOOL)isVisible
-{
-	isControlCenterVisible = %orig;
-	[bluetoothBatteryInfoObject hideIfNeeded];
-	return isControlCenterVisible;
-}
-
-%end
-
-%hook BCBatteryDevice
+%hook BCBatteryDevice // update percentage and color
 
 - (void)setCharging: (BOOL)arg1
 {
@@ -618,20 +582,54 @@ static void loadDeviceScreenDimensions()
 
 %end
 
-%group hideBluetoothDevicesBatteryFromStatusBarGroup
+%hook SpringBoard
 
-	%hook BluetoothDevice
+- (void)applicationDidFinishLaunching: (id)application // load module
+{
+	%orig;
 
-	- (BOOL)supportsBatteryLevel
+	loadDeviceScreenDimensions();
+	if(!bluetoothBatteryInfoObject) 
 	{
-		return NO;
+		bluetoothBatteryInfoObject = [[BluetoothBatteryInfo alloc] init];
+		[bluetoothBatteryInfoObject updateDeviceWithoutEffects];
 	}
+}
 
-	%end
-	
+- (void)frontDisplayDidChange: (id)arg1 // check if opened app is blacklisted
+{
+	%orig;
+
+	NSString *currentApp = [(SBApplication*)[self _accessibilityFrontMostApplication] bundleIdentifier];
+	isBlacklistedAppInFront = blackListedApps && currentApp && [blackListedApps containsObject: currentApp];
+	[bluetoothBatteryInfoObject hideIfNeeded];
+}
+
 %end
 
-%hook _UIStatusBar
+%hook SBCoverSheetPresentationManager // check if lock screen is presented or not
+
+- (BOOL)isPresented
+{
+	isLockScreenPresented = %orig;
+	[bluetoothBatteryInfoObject hideIfNeeded];
+	return isLockScreenPresented;
+}
+
+%end
+
+%hook SBControlCenterController // check if control center is presented or not
+
+-(BOOL)isVisible
+{
+	isControlCenterVisible = %orig;
+	[bluetoothBatteryInfoObject hideIfNeeded];
+	return isControlCenterVisible;
+}
+
+%end
+
+%hook _UIStatusBar // update colors based on status bar colors
 
 - (void)setStyle: (long long)style
 {
@@ -651,7 +649,7 @@ static void loadDeviceScreenDimensions()
 
 %end
 
-%hook SBMainDisplaySceneLayoutStatusBarView
+%hook SBMainDisplaySceneLayoutStatusBarView // hide on full screen
 
 - (void)_applyStatusBarHidden: (BOOL)arg1 withAnimation: (long long)arg2 toSceneWithIdentifier: (id)arg3
 {
@@ -660,6 +658,63 @@ static void loadDeviceScreenDimensions()
 	%orig;
 }
 
+%end
+
+%hook _UIStatusBarForegroundView // support for peep tweak
+
+- (void)setHidden: (BOOL)arg
+{
+	%orig;
+
+	isPeepStatusBarHidden = arg;
+	[bluetoothBatteryInfoObject hideIfNeeded];
+}
+
+%end
+
+%hook SBMainSwitcherViewController // check if app switcher is open
+
+-(void)updateWindowVisibilityForSwitcherContentController: (id)arg1
+{
+	%orig;
+
+	isAppSwitcherOpen = [self isMainSwitcherVisible];
+	[bluetoothBatteryInfoObject hideIfNeeded];
+}
+
+%end
+
+%hook SBFloatyFolderController // check if a folder is open
+
+- (void)viewWillAppear: (BOOL)arg1
+{
+	%orig;
+
+	isFolderOpen = YES;
+	[bluetoothBatteryInfoObject hideIfNeeded];
+}
+
+- (void)viewWillDisappear: (BOOL)arg1
+{
+	%orig;
+
+	isFolderOpen = NO;
+	[bluetoothBatteryInfoObject hideIfNeeded];
+}
+
+%end
+
+%group hideBluetoothDevicesBatteryFromStatusBarGroup
+
+	%hook BluetoothDevice
+
+	- (BOOL)supportsBatteryLevel
+	{
+		return NO;
+	}
+
+	%end
+	
 %end
 
 %group dynamicHeadphonesIconGroup
@@ -819,6 +874,7 @@ static void settingsChanged(CFNotificationCenterRef center, void *observer, CFSt
 			[pref registerBool: &showOnControlCenter default: NO forKey: @"showOnControlCenter"];
 			[pref registerBool: &hideOnFullScreen default: NO forKey: @"hideOnFullScreen"];
 			[pref registerBool: &hideOnLandscape default: NO forKey: @"hideOnLandscape"];
+			[pref registerBool: &notchlessSupport default: NO forKey: @"notchlessSupport"];
 			[pref registerBool: &hideInternalBattery default: NO forKey: @"hideInternalBattery"];
 			[pref registerBool: &hideGlyph default: NO forKey: @"hideGlyph"];
 			[pref registerBool: &dynamicHeadphonesIcon default: NO forKey: @"dynamicHeadphonesIcon"];
