@@ -17,6 +17,7 @@ static BOOL showOnLockScreen;
 static BOOL showOnControlCenter;
 static BOOL hideOnFullScreen;
 static BOOL hideOnLandscape;
+static BOOL hideOnAppSwitcherFolder;
 static BOOL notchlessSupport;
 static BOOL hideInternalBattery;
 static BOOL hideGlyph;
@@ -529,8 +530,7 @@ static void loadDeviceScreenDimensions()
 		 || isLockScreenPresented && !showOnLockScreen
 		 || isStatusBarHidden && hideOnFullScreen
 		 || isControlCenterVisible && !showOnControlCenter
-		 || isFolderOpen
-		 || isAppSwitcherOpen
+		 || (isFolderOpen || isAppSwitcherOpen) && hideOnAppSwitcherFolder
 		 || !isLockScreenPresented && (shouldHideBasedOnOrientation || isBlacklistedAppInFront)
 		 || isPeepStatusBarHidden];
 	}
@@ -873,6 +873,7 @@ static void settingsChanged(CFNotificationCenterRef center, void *observer, CFSt
 			[pref registerBool: &showOnControlCenter default: NO forKey: @"showOnControlCenter"];
 			[pref registerBool: &hideOnFullScreen default: NO forKey: @"hideOnFullScreen"];
 			[pref registerBool: &hideOnLandscape default: NO forKey: @"hideOnLandscape"];
+			[pref registerBool: &hideOnAppSwitcherFolder default: NO forKey: @"hideOnAppSwitcherFolder"];
 			[pref registerBool: &notchlessSupport default: NO forKey: @"notchlessSupport"];
 			[pref registerBool: &hideInternalBattery default: NO forKey: @"hideInternalBattery"];
 			[pref registerBool: &hideGlyph default: NO forKey: @"hideGlyph"];

@@ -112,6 +112,20 @@
 			<key>defaults</key>
 			<string>com.johnzaro.bluetoothbatteryinfoprefs</string>
 			<key>key</key>
+			<string>hideOnAppSwitcherFolder</string>
+			<key>label</key>
+			<string>Hide On App Switcher / Folder</string>
+			<key>PostNotification</key>
+			<string>com.johnzaro.bluetoothbatteryinfoprefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<false/>
+			<key>defaults</key>
+			<string>com.johnzaro.bluetoothbatteryinfoprefs</string>
+			<key>key</key>
 			<string>notchlessSupport</string>
 			<key>label</key>
 			<string>Notchless Support</string>
