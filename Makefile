@@ -7,11 +7,11 @@ INSTALL_TARGET_PROCESSES = SpringBoard
 include $(THEOS)/makefiles/common.mk
 GO_EASY_ON_ME = 1
 
-TWEAK_NAME = BluetoothBatteryInfo
-BluetoothBatteryInfo_FILES = BluetoothBatteryInfo.xm
-BluetoothBatteryInfo_CFLAGS = -fobjc-arc -Wno-logical-op-parentheses
-BluetoothBatteryInfo_LIBRARIES += sparkcolourpicker sparkapplist
-BluetoothBatteryInfo_EXTRA_FRAMEWORKS += Cephei
+TWEAK_NAME = PerfectBTBatteryInfo
+PerfectBTBatteryInfo_FILES = PerfectBTBatteryInfo.xm
+PerfectBTBatteryInfo_CFLAGS = -fobjc-arc -Wno-logical-op-parentheses
+PerfectBTBatteryInfo_LIBRARIES += sparkcolourpicker sparkapplist
+PerfectBTBatteryInfo_EXTRA_FRAMEWORKS += Cephei
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 

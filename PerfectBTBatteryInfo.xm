@@ -1,4 +1,4 @@
-#import "BluetoothBatteryInfo.h"
+#import "PerfectBTBatteryInfo.h"
 #import "SparkAppList.h"
 #import "SparkColourPickerUtils.h"
 #import <Cephei/HBPreferences.h>
@@ -94,7 +94,7 @@ static void loadDeviceScreenDimensions()
 	screenHeight = [[UIScreen mainScreen] _referenceBounds].size.height;
 }
 
-@implementation BluetoothBatteryInfo
+@implementation PerfectBTBatteryInfo
 
 	- (id)init
 	{
@@ -485,7 +485,7 @@ static void loadDeviceScreenDimensions()
 		currentDeviceIdentifier = [currentDevice identifier];
 
 		if([[[[currentDevice glyph] imageAsset] assetName] containsString: @"bluetooth"])
-			[glyphImageView setImage: [[UIImage imageWithContentsOfFile: @"/Library/PreferenceBundles/BluetoothBatteryInfoPrefs.bundle/genericBluetoothIcon.png"] imageWithRenderingMode: UIImageRenderingModeAlwaysTemplate]];
+			[glyphImageView setImage: [[UIImage imageWithContentsOfFile: @"/Library/PreferenceBundles/PerfectBTBatteryInfoPrefs.bundle/genericBluetoothIcon.png"] imageWithRenderingMode: UIImageRenderingModeAlwaysTemplate]];
 		else
 			[glyphImageView setImage: [[currentDevice glyph] imageWithRenderingMode: UIImageRenderingModeAlwaysTemplate]];
 
@@ -590,7 +590,7 @@ static void loadDeviceScreenDimensions()
 	loadDeviceScreenDimensions();
 	if(!bluetoothBatteryInfoObject) 
 	{
-		bluetoothBatteryInfoObject = [[BluetoothBatteryInfo alloc] init];
+		bluetoothBatteryInfoObject = [[PerfectBTBatteryInfo alloc] init];
 		[bluetoothBatteryInfoObject updateDeviceWithoutEffects];
 	}
 }

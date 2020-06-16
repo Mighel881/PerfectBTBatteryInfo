@@ -11,7 +11,7 @@
 - (NSArray*)connectedDevices;
 @end
 
-@interface BluetoothBatteryInfo: NSObject
+@interface PerfectBTBatteryInfo: NSObject
 {
     UIWindow *bluetoothBatteryInfoWindow;
     UIImageView *glyphImageView;

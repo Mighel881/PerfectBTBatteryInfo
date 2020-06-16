@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>English</string>
 	<key>CFBundleExecutable</key>
-	<string>BluetoothBatteryInfoPrefs</string>
+	<string>PerfectBTBatteryInfoPrefs</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.johnzaro.bluetoothbatteryinfoprefs</string>
 	<key>CFBundleInfoDictionaryVersion</key>
