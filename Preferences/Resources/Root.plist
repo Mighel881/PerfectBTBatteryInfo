@@ -70,6 +70,20 @@
 			<key>defaults</key>
 			<string>com.johnzaro.bluetoothbatteryinfoprefs</string>
 			<key>key</key>
+			<string>showOnlyOnLockScreen</string>
+			<key>label</key>
+			<string>Show Only On Lock Screen</string>
+			<key>PostNotification</key>
+			<string>com.johnzaro.bluetoothbatteryinfoprefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<false/>
+			<key>defaults</key>
+			<string>com.johnzaro.bluetoothbatteryinfoprefs</string>
+			<key>key</key>
 			<string>showOnControlCenter</string>
 			<key>label</key>
 			<string>Show On Control Center</string>
